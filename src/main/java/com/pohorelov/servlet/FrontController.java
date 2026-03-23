@@ -2,6 +2,7 @@ package com.pohorelov.servlet;
 
 import com.pohorelov.handler.Handler;
 import com.pohorelov.handler.HomeHandler;
+import com.pohorelov.handler.ProfileHandler;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -20,6 +21,7 @@ public class FrontController extends HttpServlet {
   @Override
   public void init(ServletConfig config) {
     ROUTES.put("GET /", new HomeHandler());
+    ROUTES.put("POST /profile", new ProfileHandler());
   }
 
   @Override
