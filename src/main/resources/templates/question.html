@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--
+        th:text у <title> — динамічна назва вкладки браузера.
+        |...| — literal substitution.
+    -->
+    <title th:text="|Питання ${questionNumber} — ${quiz.title}|">Питання</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@400;700;900&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:      #0a0a0f;
+            --surface: #13131a;
+            --border:  #1e1e2e;
+            --accent:  #7c6aff;
+            --accent2: #ff6a8a;
+            --text:    #e2e2f0;
+            --muted:   #5a5a7a;
+            --green:   #4ade80;
+            --red:     #f87171;
+            --mono:    'JetBrains Mono', monospace;
+            --display: 'Unbounded', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--mono);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .card {
+            position: relative; z-index: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 680px;
+            animation: appear 0.3s ease both;
+        }
+
+        @keyframes appear {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.75rem;
+        }
+
+        .counter {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+        }
+        .counter strong { color: var(--accent); font-size: 0.95rem; }
+
+        /* ── Таймер ── */
+        .timer {
+            font-family: var(--display);
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--green);
+            letter-spacing: 0.05em;
+            transition: color 0.3s;
+        }
+        .timer.warning { color: var(--accent2); }
+        .timer.danger  { color: var(--red); animation: pulse 0.5s infinite alternate; }
+
+        @keyframes pulse {
+            from { opacity: 1; }
+            to   { opacity: 0.5; }
+        }
+
+        /* ── Progress bar ── */
+        .progress-wrap {
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        /* ── Question ── */
+        .question-text {
+            font-family: var(--display);
+            font-size: 1.05rem;
+            font-weight: 700;
+            line-height: 1.5;
+            margin-bottom: 2rem;
+        }
+
+        /* ── Answers ── */
+        .answers { display: flex; flex-direction: column; gap: 0.65rem; }
+
+        .answer-label {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1.1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            user-select: none;
+        }
+        .answer-label:hover {
+            border-color: var(--accent);
+            background: rgba(124, 106, 255, 0.05);
+        }
+        .answer-label:has(input:checked) {
+            border-color: var(--accent);
+            background: rgba(124, 106, 255, 0.1);
+        }
+
+        .answer-key {
+            width: 28px; height: 28px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--muted);
+            flex-shrink: 0;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .answer-label:has(input:checked) .answer-key {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .answer-text { font-size: 0.85rem; line-height: 1.5; }
+
+        /* Ховаємо рідний radio — стилізуємо label */
+        input[type="radio"] { display: none; }
+
+        /* ── Submit ── */
+        .submit-row {
+            margin-top: 1.75rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-submit {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.7rem 1.75rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .btn-submit:hover   { opacity: 0.85; }
+        .btn-submit:active  { transform: scale(0.97); }
+        .btn-submit:disabled { opacity: 0.4; cursor: default; }
+    </style>
+</head>
+<body>
+<div class="card">
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TOPBAR: лічильник питань + таймер
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="topbar">
+        <div class="counter">
+            Питання <strong th:text="${questionNumber}">1</strong>
+            <span th:text="|/ ${totalQuestions}|">/ 5</span>
+        </div>
+        <!--
+            data-start-time="${startTime}" — передаємо час старту (мс) у JavaScript.
+            Thymeleaf підставляє числове значення прямо в data-атрибут.
+            JS читає це значення і рахує скільки залишилось часу.
+
+            Чому таймер з СЕСІЇ, а не з JS?
+            Якщо студент закриє вкладку і відкриє знову — час продовжить йти,
+            бо startTime береться з сесії на сервері, а не з localStorage.
+        -->
+        <div class="timer"
+             id="timer"
+             th:data-start-time="${startTime}"
+             th:data-limit-sec="${quiz.timeLimitSeconds}">
+            --:--
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PROGRESS BAR
+         th:style — динамічний inline style.
+         progress обчислений в хендлері як (currentIndex / total) * 100.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="progress-wrap">
+        <div class="progress-bar"
+             th:style="|width: ${progress}%|"></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         ПИТАННЯ І ВІДПОВІДІ
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="question-text" th:text="${question.text}">Текст питання</div>
+
+    <!--
+        PRG: форма надсилає POST /quiz/answer.
+        Хендлер зберігає відповідь у сесії і робить redirect.
+        Браузер отримує 302 і робить GET /quiz/question.
+        F5 на /quiz/question — безпечний GET, форма не повторюється.
+    -->
+    <form method="post" th:action="@{/quiz/answer}" id="quizForm">
+
+        <div class="answers">
+            <!--
+                th:each для варіантів відповіді.
+                answer.key() / answer.text() — record-accessor методи.
+            -->
+            <label class="answer-label"
+                   th:each="answer : ${question.answers}"
+                   th:for="|ans_${answer.key()}|">
+
+                <!--
+                    th:id і th:value — динамічні атрибути.
+                    |ans_${answer.key()}| генерує ans_A, ans_B тощо.
+                    name="answer" — однакове для всіх radio → одна група.
+                -->
+                <input type="radio"
+                       name="answer"
+                       th:id="|ans_${answer.key()}|"
+                       th:value="${answer.key()}">
+
+                <span class="answer-key" th:text="${answer.key()}">A</span>
+                <span class="answer-text" th:text="${answer.text()}">Текст варіанту</span>
+            </label>
+        </div>
+
+        <!--
+            hidden field з questionIndex — не обов'язковий тут
+            (хендлер бере індекс із сесії), але корисний для debug.
+        -->
+        <input type="hidden" name="questionIndex" th:value="${questionIndex}">
+
+        <div class="submit-row">
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <!--
+                    Тернарний оператор у Thymeleaf:
+                    (умова) ? 'якщо true' : 'якщо false'
+                -->
+                <span th:text="${questionNumber == totalQuestions} ? 'Завершити →' : 'Далі →'">
+                    Далі →
+                </span>
+            </button>
+        </div>
+
+    </form>
+</div>
+
+<!--
+    JavaScript: таймер і автосабміт.
+    Логіка проста — коротко і зрозуміло для студентів.
+-->
+<script>
+(function () {
+    const timerEl   = document.getElementById('timer');
+    const form      = document.getElementById('quizForm');
+    const startTime = parseInt(timerEl.dataset.startTime, 10); // з data-start-time
+    const limitSec  = parseInt(timerEl.dataset.limitSec,  10); // з data-limit-sec
+
+    function pad(n) { return n.toString().padStart(2, '0'); }
+
+    function tick() {
+        const elapsed   = Math.floor((Date.now() - startTime) / 1000);
+        const remaining = limitSec - elapsed;
+
+        if (remaining <= 0) {
+            timerEl.textContent = '00:00';
+            timerEl.classList.add('danger');
+            // Час вийшов — сабмітимо форму без відповіді (answer буде null)
+            form.submit();
+            return;
+        }
+
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        timerEl.textContent = pad(m) + ':' + pad(s);
+
+        // Візуальні підказки
+        timerEl.classList.toggle('warning', remaining <= 30 && remaining > 10);
+        timerEl.classList.toggle('danger',  remaining <= 10);
+
+        setTimeout(tick, 500);
+    }
+
+    tick();
+})();
+</script>
+</body>
+</html>
