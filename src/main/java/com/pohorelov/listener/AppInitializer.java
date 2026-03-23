@@ -2,6 +2,7 @@ package com.pohorelov.listener;
 
 import com.pohorelov.model.LeaderboardEntry;
 import com.pohorelov.repository.QuizRepository;
+import com.pohorelov.util.ThymeleafConfig;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
@@ -24,7 +25,8 @@ public class AppInitializer implements ServletContextListener {
     public void contextInitialized(ServletContextEvent sce) {
         var ctx = sce.getServletContext();
 
-        // TODO 1. Ініціалізуємо Thymeleaf (один раз — дорога операція)
+        // 1. Ініціалізуємо Thymeleaf (один раз — дорога операція)
+        ThymeleafConfig.init();
 
         // 2. Репозиторій квізів (immutable дані)
         ctx.setAttribute(QUIZ_REPOSITORY, new QuizRepository());

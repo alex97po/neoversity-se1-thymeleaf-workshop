@@ -3,12 +3,15 @@ package com.pohorelov.servlet;
 import com.pohorelov.handler.Handler;
 import com.pohorelov.handler.HomeHandler;
 import jakarta.servlet.ServletConfig;
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+@WebServlet("/*")
 public class FrontController extends HttpServlet {
 
   // METHOD /path => Handler
@@ -20,10 +23,12 @@ public class FrontController extends HttpServlet {
   }
 
   @Override
-  protected void service(HttpServletRequest req, HttpServletResponse resp) {
-    String path = req.getServletPath();
+  protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    String path = req.getPathInfo();
     String method = req.getMethod();
-    final var handler = ROUTES.get(method + " " + path);
+    String key = method + " " + path;
+    System.out.println(key);
+    final var handler = ROUTES.get(key);
     handler.handle(req, resp);
   }
 
