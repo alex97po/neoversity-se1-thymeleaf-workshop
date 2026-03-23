@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="|Результат — ${quiz.title}|">Результат</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@400;700;900&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:      #0a0a0f;
+            --surface: #13131a;
+            --border:  #1e1e2e;
+            --accent:  #7c6aff;
+            --accent2: #ff6a8a;
+            --text:    #e2e2f0;
+            --muted:   #5a5a7a;
+            --green:   #4ade80;
+            --red:     #f87171;
+            --yellow:  #facc15;
+            --mono:    'JetBrains Mono', monospace;
+            --display: 'Unbounded', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--mono);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .wrap { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; }
+
+        /* ── Hero score ── */
+        .hero {
+            text-align: center;
+            padding: 3rem 0 2.5rem;
+            animation: fadeUp 0.4s ease both;
+        }
+
+        .hero-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--muted);
+            margin-bottom: 1rem;
+        }
+
+        .hero-score {
+            font-family: var(--display);
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -0.04em;
+            margin-bottom: 0.5rem;
+        }
+        .hero-score.great  { color: var(--green); }
+        .hero-score.ok     { color: var(--yellow); }
+        .hero-score.poor   { color: var(--red); }
+
+        .hero-subtitle {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .hero-subtitle strong { color: var(--text); }
+
+        /* ── Stats row ── */
+        .stats {
+            display: flex;
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 2.5rem;
+        }
+        .stat {
+            flex: 1;
+            background: var(--surface);
+            padding: 1rem;
+            text-align: center;
+        }
+        .stat-value {
+            font-family: var(--display);
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .stat-label {
+            font-size: 0.62rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0.2rem;
+        }
+
+        /* ── Section header ── */
+        .section-title {
+            font-size: 0.63rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        /* ── Questions review ── */
+        .questions-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2.5rem; }
+
+        .q-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .q-item.correct { border-left: 3px solid var(--green); }
+        .q-item.wrong   { border-left: 3px solid var(--red); }
+        .q-item.skipped { border-left: 3px solid var(--muted); }
+
+        .q-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+        }
+
+        .q-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .q-text {
+            font-size: 0.82rem;
+            line-height: 1.5;
+            font-weight: 700;
+            flex: 1;
+        }
+
+        .q-answers {
+            padding: 0 1.25rem 1rem 3rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .q-answer {
+            font-size: 0.76rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .q-answer.user-correct { color: var(--green); }
+        .q-answer.user-wrong   { color: var(--red); }
+        .q-answer.correct-ans  { color: var(--green); }
+
+        .q-tag {
+            font-size: 0.6rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .tag-your   { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+        .tag-correct{ background: rgba(74,222,128,0.1);  color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+
+        .q-explanation {
+            padding: 0.65rem 1.25rem 0.85rem 3rem;
+            font-size: 0.74rem;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+            line-height: 1.6;
+        }
+        .q-explanation::before {
+            content: '💡 ';
+        }
+
+        /* ── Leaderboard ── */
+        .leaderboard {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 2.5rem;
+        }
+
+        .lb-row {
+            display: grid;
+            grid-template-columns: 2rem 1fr auto auto;
+            gap: 1rem;
+            align-items: center;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.78rem;
+        }
+        .lb-row:last-child { border-bottom: none; }
+        .lb-row.header { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+        .lb-row.me { background: rgba(124, 106, 255, 0.06); }
+
+        .lb-rank { color: var(--muted); font-weight: 700; text-align: center; }
+        .lb-rank.top1 { color: var(--yellow); }
+        .lb-rank.top2 { color: #a8a8a8; }
+        .lb-rank.top3 { color: #c87533; }
+
+        .lb-nick { font-weight: 700; }
+        .lb-score { color: var(--accent); font-weight: 700; text-align: right; }
+        .lb-time  { color: var(--muted); text-align: right; font-size: 0.72rem; }
+
+        /* ── Actions ── */
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            padding-bottom: 3rem;
+        }
+
+        .btn {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.65rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-accent  { background: var(--accent); color: #fff; }
+        .btn-accent:hover { opacity: 0.85; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .section-block { animation: fadeUp 0.4s ease both; }
+        .section-block:nth-child(2) { animation-delay: 0.1s; }
+        .section-block:nth-child(3) { animation-delay: 0.2s; }
+        .section-block:nth-child(4) { animation-delay: 0.3s; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         HERO SCORE
+         th:classappend — додає CSS-клас до вже існуючих.
+         th:class — замінює клас повністю.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="hero">
+        <div class="hero-label" th:text="|${quiz.title} — Результат|">Результат</div>
+
+        <!--
+            th:classappend — ДОДАЄ клас, не замінює "hero-score".
+            Тернарний у Thymeleaf: (умова) ? 'якщо true' : 'інакше'
+            Вкладений тернарний для трьох варіантів.
+        -->
+        <div class="hero-score"
+             th:classappend="${percentage >= 75 ? 'great' : (percentage >= 50 ? 'ok' : 'poor')}"
+             th:text="|${percentage}%|">
+            0%
+        </div>
+
+        <div class="hero-subtitle">
+            Правильно: <strong th:text="|${score} з ${total}|">0 з 0</strong>
+            &nbsp;·&nbsp;
+            Час:
+            <!--
+                Вираз у Thymeleaf — це OGNL (Object-Graph Navigation Language).
+                Підтримує арифметику: durationSec / 60, durationSec % 60.
+                #numbers.formatInteger(value, 2) — форматування числа (мін. 2 цифри).
+            -->
+            <strong th:text="|${#numbers.formatInteger(durationSec / 60, 2)}:${#numbers.formatInteger(durationSec % 60, 2)}|">
+                00:00
+            </strong>
+            &nbsp;·&nbsp;
+            <span th:text="${nickname}">Анонім</span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         STATS ROW
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="stats section-block">
+        <div class="stat">
+            <div class="stat-value" th:text="${score}">0</div>
+            <div class="stat-label">Правильно</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" th:text="${total - score}">0</div>
+            <div class="stat-label">Помилок</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" th:text="|${durationSec}с|">0с</div>
+            <div class="stat-label">Час</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value"
+                 th:text="${total > 0 ? #numbers.formatDecimal(score * 10.0 / total, 1, 1) : '0.0'}">
+                0.0
+            </div>
+            <div class="stat-label">Бал / 10</div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         ДЕТАЛЬНИЙ РОЗБІР ПИТАНЬ
+         questionResults — List<QuizQuestionResult> з хендлера.
+         Кожен QuizQuestionResult має: question, userKey, correct, userAnswerText, correctAnswerText.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="section-block">
+        <div class="section-title">Розбір відповідей</div>
+
+        <div class="questions-list">
+            <!--
+                th:each з iterStat — статус ітерації.
+                iterStat.index  — поточний індекс (0-based)
+                iterStat.count  — поточний номер (1-based)
+                iterStat.first  — чи перший елемент
+                iterStat.last   — чи останній елемент
+            -->
+            <div class="q-item"
+                 th:each="qr, iterStat : ${questionResults}"
+                 th:classappend="${qr.userKey == null ? 'skipped' : (qr.correct ? 'correct' : 'wrong')}">
+
+                <div class="q-header">
+                    <!--
+                        Тернарний для emoji-іконки.
+                        qr.userKey == null → "пропущено"
+                        qr.correct → правильно
+                        інакше → неправильно
+                    -->
+                    <div class="q-icon"
+                         th:text="${qr.userKey == null ? '⏭' : (qr.correct ? '✓' : '✗')}">
+                        ?
+                    </div>
+                    <div class="q-text"
+                         th:text="|${iterStat.count}. ${qr.question.text}|">
+                        Текст питання
+                    </div>
+                </div>
+
+                <div class="q-answers">
+                    <!--
+                        th:if на всьому блоці — показуємо "вашу відповідь" тільки якщо є.
+                        qr.userKey != null означає що студент відповів.
+                    -->
+                    <div class="q-answer"
+                         th:if="${qr.userKey != null}"
+                         th:classappend="${qr.correct ? 'user-correct' : 'user-wrong'}">
+                        <span class="q-tag tag-your">Ваша</span>
+                        <!--
+                            qr.question.getCorrectKey() в Thymeleaf:
+                            qr.question.correctKey  або  qr.question.getCorrectKey()
+                            Thymeleaf автоматично викликає getter через property-нотацію.
+                        -->
+                        <span th:text="|${qr.userKey}: ${qr.userAnswerText}|">A: відповідь</span>
+                    </div>
+
+                    <!--
+                        Показуємо правильну відповідь якщо студент відповів неправильно
+                        АБО пропустив питання.
+                    -->
+                    <div class="q-answer correct-ans"
+                         th:if="${!qr.correct}">
+                        <span class="q-tag tag-correct">Правильно</span>
+                        <span th:text="|${qr.question.correctKey}: ${qr.correctAnswerText}|">
+                            B: правильна відповідь
+                        </span>
+                    </div>
+                </div>
+
+                <!--
+                    th:if для пояснення — показуємо тільки якщо є текст.
+                    #strings.isEmpty() — утиліта Thymeleaf для рядків.
+                    Є також: #strings.length(), #strings.toUpperCase() тощо.
+                -->
+                <div class="q-explanation"
+                     th:if="${!#strings.isEmpty(qr.question.explanation)}"
+                     th:text="${qr.question.explanation}">
+                    Пояснення
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         LEADERBOARD
+         leaderboard — List<LeaderboardEntry> з хендлера (топ-10 для цього квізу).
+         LeaderboardEntry — record, доступ через entry.nickname(), entry.score() тощо.
+         Але Thymeleaf також розуміє record accessor через property-нотацію:
+         entry.nickname замість entry.nickname()
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="section-block">
+        <div class="section-title">Лідерборд (топ-10)</div>
+
+        <!--
+            th:if="${!#lists.isEmpty(leaderboard)}" — не показуємо якщо порожній.
+            #lists — утиліта для роботи зі списками.
+        -->
+        <div class="leaderboard" th:if="${!#lists.isEmpty(leaderboard)}">
+
+            <div class="lb-row header">
+                <div>#</div>
+                <div>Нікнейм</div>
+                <div>Результат</div>
+                <div>Час</div>
+            </div>
+
+            <!--
+                iterStat.count — ранг у лідерборді.
+                th:classappend для підсвічування поточного гравця:
+                entry.nickname == nickname (nickname — з моделі хендлера).
+            -->
+            <div class="lb-row"
+                 th:each="entry, iterStat : ${leaderboard}"
+                 th:classappend="${entry.nickname == nickname ? 'me' : ''}">
+
+                <div class="lb-rank"
+                     th:classappend="${iterStat.count == 1 ? 'top1' : (iterStat.count == 2 ? 'top2' : (iterStat.count == 3 ? 'top3' : ''))}"
+                     th:text="${iterStat.count}">
+                    1
+                </div>
+
+                <div class="lb-nick"
+                     th:text="${entry.nickname + (entry.nickname == nickname ? ' ← ви' : '')}">
+                    Нікнейм
+                </div>
+
+                <div class="lb-score"
+                     th:text="|${entry.score}/${entry.total} (${entry.percentage()}%)|">
+                    0/0
+                </div>
+
+                <div class="lb-time"
+                     th:text="|${entry.durationSeconds}с|">
+                    0с
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         ACTIONS
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="actions section-block">
+        <!--
+            @{/quiz/start(id=${quiz.id})} — перепройти цей самий квіз.
+            @{/} — на головну.
+        -->
+        <a th:href="@{/quiz/start(id=${quiz.id})}" class="btn btn-accent">
+            Пройти знову
+        </a>
+        <a th:href="@{/}" class="btn btn-outline">
+            ← Всі квізи
+        </a>
+    </div>
+
+</div>
+</body>
+</html>

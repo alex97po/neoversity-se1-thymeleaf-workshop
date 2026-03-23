@@ -3,6 +3,9 @@ package com.pohorelov.servlet;
 import com.pohorelov.handler.Handler;
 import com.pohorelov.handler.HomeHandler;
 import com.pohorelov.handler.ProfileHandler;
+import com.pohorelov.handler.QuizAnswerHandler;
+import com.pohorelov.handler.QuizQuestionHandler;
+import com.pohorelov.handler.QuizStartHandler;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -22,6 +25,9 @@ public class FrontController extends HttpServlet {
   public void init(ServletConfig config) {
     ROUTES.put("GET /", new HomeHandler());
     ROUTES.put("POST /profile", new ProfileHandler());
+    ROUTES.put("GET /quiz/start", new QuizStartHandler());
+    ROUTES.put("GET /quiz/question", new QuizQuestionHandler());
+    ROUTES.put("POST /quiz/answer", new QuizAnswerHandler());
   }
 
   @Override
