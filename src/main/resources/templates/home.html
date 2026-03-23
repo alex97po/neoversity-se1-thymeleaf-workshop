@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Workshop</title>
+    <!--
+        xmlns:th="http://www.thymeleaf.org" — підключаємо простір імен Thymeleaf.
+        Це дає нам th:* атрибути. IDE підсвічуватиме їх коректно.
+        У HTML5 ці атрибути ігноруються браузером — шаблон валідний HTML.
+    -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@400;700;900&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #0a0a0f;
+            --surface:  #13131a;
+            --border:   #1e1e2e;
+            --accent:   #7c6aff;
+            --accent2:  #ff6a8a;
+            --text:     #e2e2f0;
+            --muted:    #5a5a7a;
+            --green:    #4ade80;
+            --mono:     'JetBrains Mono', monospace;
+            --display:  'Unbounded', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--mono);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo {
+            font-family: var(--display);
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+        }
+        .logo span { color: var(--accent); }
+
+        .nick-form { display: flex; gap: 0.5rem; align-items: center; }
+        .nick-form label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+        .nick-form input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: 4px;
+            width: 150px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .nick-form input:focus { border-color: var(--accent); }
+        .nick-form input::placeholder { color: var(--muted); }
+
+        .btn {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.45rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-accent  { background: var(--accent); color: #fff; }
+        .btn-accent:hover { opacity: 0.85; }
+        .btn-outline { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+        .btn-outline:hover { background: var(--accent); color: #fff; }
+
+        .greeting {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+        }
+        .greeting strong { color: var(--accent); }
+
+        .section-title {
+            font-size: 0.63rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        .quiz-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .quiz-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            transition: border-color 0.2s, transform 0.2s;
+            position: relative;
+            overflow: hidden;
+            animation: fadeUp 0.4s ease both;
+        }
+        .quiz-card:nth-child(2) { animation-delay: 0.08s; }
+        .quiz-card:nth-child(3) { animation-delay: 0.16s; }
+        .quiz-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .quiz-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .quiz-card:hover::before { opacity: 1; }
+
+        .quiz-id    { font-size: 0.63rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+        .quiz-title { font-family: var(--display); font-size: 0.95rem; font-weight: 700; line-height: 1.3; }
+        .quiz-desc  { font-size: 0.76rem; color: var(--muted); line-height: 1.6; flex: 1; }
+        .quiz-meta  { display: flex; gap: 1rem; font-size: 0.7rem; color: var(--muted); }
+
+        .prev-result {
+            background: rgba(124, 106, 255, 0.07);
+            border: 1px solid rgba(124, 106, 255, 0.2);
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .prev-result .score { color: var(--accent); font-weight: 700; }
+        .prev-result .label { color: var(--muted); }
+
+        .card-footer { display: flex; gap: 0.5rem; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         HEADER — форма для встановлення нікнейму
+         ══════════════════════════════════════════════════════════════════════ -->
+    <header>
+        <div class="logo">quiz<span>.</span>ws</div>
+
+        <!--
+            th:action="@{/profile}"
+            @{...} — LinkExpression. Thymeleaf автоматично додає context path.
+            Якщо застосунок задеплоєний за /app, генерує /app/profile.
+            Жорсткий рядок action="/profile" зламається при зміні context path.
+        -->
+        <form class="nick-form" method="post" th:action="@{/profile}">
+            <label for="nick">Нікнейм</label>
+            <!--
+                th:value="${nickname}" — підставляє поточне значення з моделі.
+                Якщо nickname="" (не встановлений), поле буде порожнє.
+                Звичайний HTML value="" не є динамічним.
+            -->
+            <input id="nick" name="nickname" type="text"
+                   maxlength="20" placeholder="Анонім"
+                   th:value="${nickname}">
+            <button type="submit" class="btn btn-outline">OK</button>
+        </form>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         GREETING
+         th:if / th:unless — умовний рендеринг.
+         Якщо умова false — тег взагалі НЕ генерується в HTML.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <p class="greeting">
+        Привіт,&nbsp;
+        <!--
+            th:if="${nickname != ''}" — показуємо нікнейм якщо є.
+            th:text="${nickname}" — виводить текст з екрануванням HTML (захист від XSS).
+            Якщо nickname = "<script>", виведе &lt;script&gt;, а не виконає.
+        -->
+        <strong th:if="${nickname != ''}" th:text="${nickname}">Студент</strong>
+        <!--
+            th:unless — протилежне th:if. Зручніше ніж th:if="${!condition}".
+        -->
+        <strong th:unless="${nickname != ''}">Анонім</strong>
+        &nbsp;— обирай квіз 👇
+    </p>
+
+    <div class="section-title">Доступні квізи</div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         QUIZ LIST — th:each
+         th:each="quiz : ${quizzes}" — ітерація по колекції.
+         Thymeleaf дублює весь тег (разом з дочірніми) для кожного елементу.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <div class="quiz-grid">
+        <div class="quiz-card" th:each="quiz : ${quizzes}">
+
+            <!--
+                |...| — Literal Substitution (рядкова інтерполяція).
+                |#${quiz.id}| = "#" + quiz.id
+                Простіше ніж конкатенація: '#' + ${quiz.id}
+            -->
+            <div class="quiz-id" th:text="|#${quiz.id}|">id</div>
+
+            <div class="quiz-title" th:text="${quiz.title}">Назва квізу</div>
+            <div class="quiz-desc"  th:text="${quiz.description}">Опис</div>
+
+            <div class="quiz-meta">
+                <span th:text="|${quiz.questionCount} питань|">N питань</span>
+                <span th:text="|${quiz.timeLimitSeconds}с|">Xс</span>
+            </div>
+
+            <!-- ──────────────────────────────────────────────────────────────
+                 previousResults — Map<String, int[]> з хендлера.
+                 previousResults[quiz.id] — доступ до map за ключем у Thymeleaf.
+                 int[] доступний через [0], [1], [2].
+
+                 th:with — локальна змінна всередині блоку.
+                 Зручно щоб не повторювати довгий вираз.
+                 ────────────────────────────────────────────────────────────── -->
+            <div class="prev-result"
+                 th:if="${previousResults[quiz.id] != null}"
+                 th:with="r=${previousResults[quiz.id]}">
+                <span class="label">Останній результат</span>
+                <span class="score" th:text="|${r[0]} / ${r[1]}|">X/Y</span>
+            </div>
+
+            <div class="card-footer">
+                <!--
+                    @{/quiz/start(id=${quiz.id})} — URL з query parameter.
+                    Генерує: /quiz/start?id=java-core
+                    Якщо потрібен path param: @{/quiz/{id}/start(id=${quiz.id})}
+                -->
+                <a th:href="@{/quiz/start(id=${quiz.id})}" class="btn btn-accent">
+                    <!--
+                        th:text на span всередині a — безпечно.
+                        Можна і th:text прямо на <a>, але тоді не буде вкладених тегів.
+                    -->
+                    <span th:if="${previousResults[quiz.id] != null}">Пройти знову</span>
+                    <span th:unless="${previousResults[quiz.id] != null}">Почати →</span>
+                </a>
+            </div>
+
+        </div>
+    </div><!-- /quiz-grid -->
+
+</div>
+</body>
+</html>
